@@ -1,53 +1,43 @@
-async function sendMessage() {
-  const input = document.getElementById("userInput");
-  const message = input.value.trim();
-  if (!message) return;
+// jabber.js
+// Load environment variables from .env
+require('dotenv').config();
+const express = require('express');
+const bodyParser = require('body-parser');
+const OpenAI = require('openai');
 
-  // Add user bubble
-  addMessage(message, "user");
-  input.value = "";
+const app = express();
+app.use(bodyParser.json());
 
-  // Show typing indicator
-  const typing = document.createElement("div");
-  typing.className = "chat-bubble bot typing-indicator";
-  typing.innerText = "Jabber is thinking";
-  document.getElementById("chatContainer").appendChild(typing);
+// Initialize OpenAI with API key from .env
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
+// Route: test that server is working
+app.get('/', (req, res) => {
+  res.send('🚀 Jabber is running!');
+});
+
+// Route: send a message to Jabber
+app.post('/chat', async (req, res) => {
   try {
-    // Send to backend (adjust URL if needed)
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ message }),
+    const { message } = req.body;
+
+    const response = await client.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: message }],
     });
 
-    const data = await response.json();
-
-    // Remove typing indicator
-    document.querySelectorAll(".typing-indicator").forEach(el => el.remove());
-
-    // Add Jabber response
-    if (data && data.reply) {
-      addMessage(data.reply, "bot");
-    } else {
-      addMessage("Hmm... I didn’t quite get that.", "bot");
-    }
+    const reply = response.choices[0].message.content;
+    res.json({ reply });
   } catch (error) {
-    // Remove typing indicator on error
-    document.querySelectorAll(".typing-indicator").forEach(el => el.remove());
-    addMessage("⚠️ Error connecting to Jabber.", "bot");
+    console.error("❌ Error:", error);
+    res.status(500).json({ error: "Something went wrong with Jabber." });
   }
-}
+});
 
-function addMessage(text, sender) {
-  const bubble = document.createElement("div");
-  bubble.className = `chat-bubble ${sender}`;
-  bubble.innerText = text;
-  document.getElementById("chatContainer").appendChild(bubble);
-
-  // Auto scroll
-  const chatContainer = document.getElementById("chatContainer");
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-}
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`✅ Jabber is listening on http://localhost:${PORT}`);
+});
