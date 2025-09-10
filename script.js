@@ -1,46 +1,76 @@
-const chatContainer = document.getElementById("chat-container");
-const userInput = document.getElementById("userInput");
-const sendBtn = document.getElementById("sendBtn");
-const themeToggle = document.getElementById("themeToggle");
+// script.js - frontend
+const chatDiv = document.getElementById('chat');
+const input = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+const actionSelect = document.getElementById('action-select');
+const themeToggle = document.getElementById('theme-toggle');
 
-// Add message to chat
-function addMessage(sender, text) {
-  const msg = document.createElement("div");
-  msg.className = sender;
-  msg.textContent = text;
-  chatContainer.appendChild(msg);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+function addMessage(text, who){
+  const el = document.createElement('div');
+  el.className = 'message ' + (who === 'user' ? 'user' : 'bot');
+  if(who === 'user'){
+    el.innerHTML = `<div class="meta">You:</div>${escapeHtml(text)}`;
+  } else {
+    el.textContent = text;
+  }
+  chatDiv.appendChild(el);
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+}
 
-  // AI talks back (speech synthesis)
-  if (sender === "ai") {
-    const utterance = new SpeechSynthesisUtterance(text);
-    window.speechSynthesis.speak(utterance);
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, s => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[s]);
+}
+
+async function sendMessage(){
+  const txt = input.value.trim();
+  if(!txt) return;
+  addMessage(txt,'user');
+  input.value = '';
+
+  // figure out action: browse triggers web lookup
+  const action = actionSelect.value;
+  const mode = action === 'browse' ? 'browse' : 'ai';
+
+  // show a temporary spinner message
+  const waiting = document.createElement('div');
+  waiting.className = 'message bot';
+  waiting.textContent = 'Jabber is thinking...';
+  chatDiv.appendChild(waiting);
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+
+  try {
+    const res = await fetch('/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ message: txt, mode })
+    });
+    const data = await res.json();
+    waiting.remove();
+    if(data && data.reply){
+      addMessage(data.reply, 'bot');
+    } else {
+      addMessage('⚠️ No response from Jabber.','bot');
+    }
+  } catch (err) {
+    waiting.remove();
+    addMessage('❌ Connection error','bot');
+    console.error(err);
   }
 }
 
-// Send message
-sendBtn.addEventListener("click", async () => {
-  const text = userInput.value.trim();
-  if (!text) return;
-
-  addMessage("user", text);
-  userInput.value = "";
-
-  try {
-    const res = await fetch("http://localhost:3000/api", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text }),
-    });
-
-    const data = await res.json();
-    addMessage("ai", data.reply);
-  } catch (err) {
-    addMessage("ai", "⚠️ Error connecting to server.");
-  }
+sendBtn.addEventListener('click', sendMessage);
+input.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') sendMessage();
 });
 
-// Theme toggle
-themeToggle.addEventListener("click", () => {
-  document.body.classList.toggle("light-theme");
+// theme toggle
+themeToggle.addEventListener('click', () => {
+  document.body.classList.toggle('light');
+  const isLight = document.body.classList.contains('light');
+  themeToggle.textContent = isLight ? '☀️' : '🌙';
 });
+
+// helper to focus input when page loads
+window.addEventListener('load', () => input.focus());
