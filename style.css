@@ -1,124 +1,165 @@
 body {
-  background: #1a1a1a;
+  font-family: 'Orbitron', sans-serif;
+  background-color: #121212;
+  margin: 0;
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  font-family: 'Orbitron', sans-serif;
-  margin: 0;
 }
 
 .chat-container {
-  width: 420px;
-  height: 550px;
-  background: #111;
-  border: 2px solid #6a0dad;
+  width: 95%;
+  max-width: 500px;
+  height: 85vh;
+  background: #1e1e1e;
+  border: 2px solid #8000ff;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-size: 1.1rem;
+  box-shadow: 0 0 20px rgba(128, 0, 255, 0.6);
 }
 
 .chat-header {
-  background: #000;
-  color: #6a0dad;
-  padding: 10px 15px;
-  font-size: 1.3rem;
+  background: #111;
+  color: #8000ff;
+  padding: 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 2px solid #6a0dad;
+  border-bottom: 2px solid #8000ff;
 }
 
-#chat-messages {
-  flex: 1;
-  padding: 12px;
+.chat-header .logo {
+  margin-right: 8px;
+}
+
+#theme-toggle {
+  background: #8000ff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.chat-box {
+  flex-grow: 1;
+  padding: 10px;
   overflow-y: auto;
-  background: #1e1e1e;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .message {
-  max-width: 70%;
-  padding: 12px 16px;
-  margin: 10px;
-  border-radius: 18px;
-  line-height: 1.4;
-  font-size: 1rem;
-  display: inline-block;
-  clear: both;
-}
-
-.message.user {
-  background: #6a0dad;
-  color: #fff;
-  float: right;
-  border-bottom-right-radius: 5px;
-}
-
-.message.jabber {
-  background: #333;
-  color: #eee;
-  float: left;
-  border-bottom-left-radius: 5px;
-}
-
-.chat-input {
-  display: flex;
+  max-width: 75%;
   padding: 10px;
-  border-top: 2px solid #6a0dad;
-  background: #000;
+  border-radius: 12px;
+  line-height: 1.4;
+  font-size: 14px;
 }
 
-.chat-input input {
+.user-message {
+  align-self: flex-end;
+  background: #8000ff;
+  color: white;
+}
+
+.bot-message {
+  align-self: flex-start;
+  background: #333;
+  color: #ddd;
+}
+
+.chat-input-area {
+  display: flex;
+  padding: 8px;
+  background: #111;
+  border-top: 2px solid #8000ff;
+  gap: 6px;
+}
+
+#user-input {
   flex: 1;
-  padding: 10px 14px;
-  font-size: 1rem;
-  border: none;
+  padding: 8px;
   border-radius: 6px;
+  border: 1px solid #8000ff;
   outline: none;
 }
 
-.chat-input button, 
-.chat-input select {
-  margin-left: 8px;
-  font-size: 1rem;
-  padding: 10px 14px;
+#send-btn {
+  background: #8000ff;
   border: none;
+  padding: 8px 12px;
   border-radius: 6px;
+  color: white;
   cursor: pointer;
 }
 
-#send-btn {
-  background: #6a0dad;
-  color: #fff;
+.dropdown {
+  position: relative;
 }
 
-#options-menu {
-  background: #222;
-  color: #fff;
+.dropbtn {
+  background: #8000ff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
 }
 
-.light-mode {
-  background: #f2f2f2;
-  color: #000;
+.dropdown-content {
+  display: none;
+  position: absolute;
+  bottom: 40px;
+  right: 0;
+  background-color: #1e1e1e;
+  border: 1px solid #8000ff;
+  border-radius: 6px;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px rgba(0,0,0,0.4);
+  z-index: 1;
+  flex-direction: column;
 }
 
-.light-mode .chat-container {
+.dropdown-content button {
+  background: none;
+  color: white;
+  padding: 10px;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.dropdown-content button:hover {
+  background: #8000ff;
+}
+
+.dropdown:hover .dropdown-content {
+  display: flex;
+}
+
+/* Light Mode */
+body.light-mode {
+  background: #f4f4f4;
+}
+
+body.light-mode .chat-container {
   background: #fff;
-  border: 2px solid #6a0dad;
+  border-color: #8000ff;
 }
 
-.light-mode #chat-messages {
-  background: #f9f9f9;
-}
-
-.light-mode .chat-header {
+body.light-mode .chat-header {
   background: #eee;
-  color: #6a0dad;
+  color: #8000ff;
 }
 
-.light-mode .message.jabber {
+body.light-mode .bot-message {
   background: #ddd;
-  color: #111;
+  color: #222;
 }
