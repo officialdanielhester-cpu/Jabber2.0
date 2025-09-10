@@ -1,52 +1,86 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jabber</title>
-
-  <!-- Theme font -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div id="root">
-    <header class="app-header">
-      <div class="logo-area">
-        <img id="logo" src="logo.png" alt="Jabber logo" />
-        <h1 id="app-title">Jabber</h1>
-      </div>
-
-      <div class="controls">
-        <button id="theme-toggle" title="Toggle dark/light">🌙</button>
-      </div>
+  <div id="app">
+    <header>
+      <h1 style="font-family: 'Orbitron', sans-serif; color: purple;">🗨️ Jabber</h1>
     </header>
 
-    <main class="chat-wrap">
-      <section id="chat" class="chat-window" aria-live="polite"></section>
+    <main id="chat-box"></main>
 
-      <div class="composer">
-        <input id="message-input" type="text" placeholder="Type your message..." autocomplete="off" />
-        <button id="send-btn" class="btn-primary">Send</button>
+    <footer>
+      <input id="user-input" type="text" placeholder="Say something to Jabber..." />
 
-        <div class="dropdown">
-          <select id="action-select" aria-label="More actions">
-            <option value="send">More...</option>
-            <option value="remember">Remember</option>
-            <option value="schedule">Schedule</option>
-            <option value="browse">Browse the Web</option>
-            <option value="image">Generate Image</option>
-          </select>
-        </div>
-      </div>
-    </main>
+      <!-- Dropdown menu -->
+      <select id="action-select">
+        <option value="chat">Send</option>
+        <option value="remember">Remember</option>
+        <option value="schedule">Schedule</option>
+        <option value="browse">Browse Web</option>
+        <option value="image">Create Image</option>
+      </select>
 
-    <footer class="app-footer">
-      <small>© Jabber — replace logo.png for your own</small>
+      <button id="go-btn">Go</button>
     </footer>
   </div>
 
-  <script src="script.js"></script>
+  <script>
+    const chatBox = document.getElementById("chat-box");
+    const userInput = document.getElementById("user-input");
+    const actionSelect = document.getElementById("action-select");
+    const goBtn = document.getElementById("go-btn");
+
+    function addMessage(content, sender) {
+      const msg = document.createElement("div");
+      msg.classList.add("message", sender);
+      msg.textContent = content;
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function handleAction() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      const action = actionSelect.value;
+      addMessage(message, "user");
+      userInput.value = "";
+
+      try {
+        const res = await fetch("/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message, action })
+        });
+
+        const data = await res.json();
+        if (data.reply) {
+          addMessage(data.reply, "bot");
+        } else if (data.image) {
+          const img = document.createElement("img");
+          img.src = data.image;
+          img.alt = "Generated Image";
+          img.classList.add("chat-image");
+          chatBox.appendChild(img);
+        } else {
+          addMessage("⚠️ Error: No reply", "bot");
+        }
+      } catch (err) {
+        addMessage("❌ Connection error", "bot");
+      }
+    }
+
+    goBtn.addEventListener("click", handleAction);
+    userInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") handleAction();
+    });
+  </script>
 </body>
 </html>
