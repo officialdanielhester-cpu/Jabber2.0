@@ -1,263 +1,206 @@
-/**
- * index.js - Full server for Jabber
- *
- * Required npm packages:
- *   npm install express dotenv openai node-fetch
- *
- * Environment:
- *   - OPENAI_API_KEY (recommended) — for AI chat & image generation
- *   - PORT (Render sets this automatically)
- *
- * Notes:
- *  - Keep your .env local and DO NOT commit it to GitHub.
- *  - If OPENAI_API_KEY is missing, web-search fallback will still work but AI features return a clear error.
- */
+// index.js
+// Full server file (ESM). Copy & paste into your project root.
+// Requires: "type": "module" in package.json and dependencies: express, openai
+// Set OPENAI_API_KEY in environment (Render dashboard / Secrets).
 
-const path = require("path");
-const express = require("express");
-const dotenv = require("dotenv");
-dotenv.config();
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+import OpenAI from "openai";
 
-// Try to use global fetch (Node 18+). If not available, use node-fetch.
-let fetchFn = global.fetch;
-if (!fetchFn) {
-  try {
-    // eslint-disable-next-line import/no-extraneous-dependencies
-    fetchFn = require("node-fetch");
-  } catch (e) {
-    console.warn("node-fetch not available; web search will fail without global fetch.");
-  }
-}
-
-// OpenAI client (official SDK). If not installed / set up, we handle gracefully.
-let OpenAIClient = null;
-try {
-  const OpenAI = require("openai");
-  OpenAIClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-} catch (err) {
-  // We'll report errors if user tries AI features without SDK
-  console.warn("OpenAI SDK not available or failed to initialize. AI features will return errors.");
-}
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
+const PORT = process.env.PORT || 10000;
+
+// --- OpenAI client (safe even if key missing; we'll handle errors) ---
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const openai = new OpenAI({
+  apiKey: OPENAI_API_KEY || undefined,
+});
+
+// --- Simple in-memory memories store (persist elsewhere for production) ---
+const memories = [];
+
+// --- Middleware ---
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "public"))); // serve frontend
 
-// Serve static frontend files from repo root (index.html, style.css, script.js, assets)
-const STATIC_DIR = path.resolve(__dirname);
-app.use(express.static(STATIC_DIR, { extensions: ["html"] }));
-
-// In-memory simple memory store (non-persistent). Size-limited.
-const MEMORIES = [];
-const MAX_MEMORIES = 30;
-
-// Helper: push a memory (deduplicates simple repeats)
-function addMemory(text) {
-  if (!text || typeof text !== "string") return;
-  const t = text.trim();
-  if (!t) return;
-  // Avoid duplicates if same as last
-  if (MEMORIES.length && MEMORIES[MEMORIES.length - 1] === t) return;
-  MEMORIES.push(t);
-  if (MEMORIES.length > MAX_MEMORIES) MEMORIES.shift();
-}
-
-// Helper: get last N memories as a single string
-function getMemoryContext(n = 6) {
-  if (!MEMORIES.length) return "";
-  return MEMORIES.slice(-n).map((m, i) => `- ${m}`).join("\n");
-}
-
-// Basic health
-app.get("/status", (req, res) => {
-  res.json({
-    ok: true,
-    openaiConfigured: !!(OpenAIClient && process.env.OPENAI_API_KEY),
-    memoryCount: MEMORIES.length,
-  });
-});
-
-// Remember endpoints
-app.post("/remember", (req, res) => {
-  const { text } = req.body || {};
-  if (!text || typeof text !== "string") {
-    return res.status(400).json({ error: "send { text: '...' } in body" });
-  }
-  addMemory(text);
-  return res.json({ ok: true, memoryCount: MEMORIES.length });
-});
-app.get("/memory", (req, res) => {
-  res.json({ memories: MEMORIES.slice(-MAX_MEMORIES) });
-});
-
-// Image generation endpoint
-app.post("/generate-image", async (req, res) => {
-  const { prompt, size = "512x512" } = req.body || {};
-  if (!prompt) return res.status(400).json({ error: "prompt required" });
-
-  if (!OpenAIClient) {
-    return res.status(500).json({
-      error: "OpenAI client not configured on server. Set OPENAI_API_KEY and install openai SDK.",
-    });
-  }
-
+// --- Helper: DuckDuckGo instant answer (fallback search) ---
+async function duckDuckGoInstantAnswer(query) {
   try {
-    // Use the official SDK images endpoint (OpenAI SDK v4+ style)
-    // If your installed SDK version differs, you may need to adjust this.
-    const resp = await OpenAIClient.images.generate({
-      model: "gpt-image-1",
-      prompt,
-      size,
-      // you can request base64 by setting "response_format": "b64_json" depending on SDK version
-    });
-
-    // SDK returns different shapes depending on versions. Try to extract sensibly:
-    const imageData = resp?.data?.[0]?.b64_json || resp?.data?.[0]?.url || null;
-
-    if (!imageData) {
-      console.error("Unexpected image response:", JSON.stringify(resp).slice(0, 1000));
-      return res.status(500).json({ error: "Could not generate image (unexpected response)" });
+    const q = encodeURIComponent(query);
+    const url = `https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&skip_disambig=1`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    // prefer AbstractText, then RelatedTopics[0].Text, else null
+    if (data.AbstractText && data.AbstractText.trim()) {
+      return { source: "duckduckgo", text: data.AbstractText };
     }
-
-    // If we got base64, return it as data URL. If we got a URL, return the URL.
-    if (imageData.startsWith && imageData.startsWith("http")) {
-      return res.json({ imageUrl: imageData });
+    if (Array.isArray(data.RelatedTopics) && data.RelatedTopics.length) {
+      // try to find first text
+      for (const t of data.RelatedTopics) {
+        if (t.Text) return { source: "duckduckgo", text: t.Text };
+        if (t.Topics && t.Topics.length && t.Topics[0].Text) {
+          return { source: "duckduckgo", text: t.Topics[0].Text };
+        }
+      }
     }
-    // else base64
-    return res.json({ imageBase64: imageData, imageUrl: `data:image/png;base64,${imageData}` });
+    return null;
   } catch (err) {
-    console.error("generate-image error:", err?.message || err);
-    return res.status(500).json({ error: "Image generation failed", detail: String(err?.message || err) });
+    console.error("DuckDuckGo error:", err);
+    return null;
   }
-});
-
-// Web search helper using DuckDuckGo Instant Answer (no API key)
-async function duckDuckGoInstant(q) {
-  if (!fetchFn) throw new Error("fetch not available on server");
-  const safeQ = encodeURIComponent(q);
-  const url = `https://api.duckduckgo.com/?q=${safeQ}&format=json&no_redirect=1&skip_disambig=1`;
-  const r = await fetchFn(url);
-  const data = await r.json();
-  return data;
 }
 
-// Main chat endpoint
-// Expects JSON: { message: "...", mode: "ai"|"web", remember: true|false }
-app.post("/chat", async (req, res) => {
-  const { message, mode = "ai", remember = false } = req.body || {};
-
+// --- POST /api/chat
+// Body: { message: "..." }
+// Returns: { reply: "..." }
+app.post("/api/chat", async (req, res) => {
+  const { message } = req.body || {};
   if (!message || typeof message !== "string") {
-    return res.status(400).json({ error: "send { message: '...' } in body" });
+    return res.status(400).json({ reply: "No message provided." });
   }
 
-  // Optionally remember the user's message
-  if (remember) addMemory(message);
+  // small system prompt + memory context
+  const systemPrompt = `You are Jabber, a friendly assistant. Keep responses concise for chat UI. If the user asks to "browse" or "search" use web search fallback.`;
 
-  // If user requested web browsing mode, run a web search and return summarized result
-  if (mode === "web") {
-    try {
-      const dd = await duckDuckGoInstant(message);
-      // Choose best fields from DuckDuckGo Instant Answer
-      const answer = dd?.AbstractText?.trim();
-      if (answer) {
-        return res.json({ reply: `🔎 ${answer}` });
-      }
-      // Some instant answers return RelatedTopics with FirstURL + Text
-      const related = dd?.RelatedTopics?.find((t) => t.Text || (t.Topics && t.Topics[0]?.Text));
-      if (related) {
-        const text = related.Text || related.Topics?.[0]?.Text || "";
-        const firstURL = related.FirstURL || related.Topics?.[0]?.FirstURL || "";
-        return res.json({ reply: `🔗 ${text}${firstURL ? `\n\nSource: ${firstURL}` : ""}` });
-      }
-      // fallback
-      return res.json({ reply: `🤔 I searched the web but couldn't find a concise Instant Answer for "${message}".` });
-    } catch (err) {
-      console.error("web search error:", err);
-      return res.status(500).json({ reply: "⚠️ Web search failed on server." });
-    }
-  }
-
-  // mode === "ai": use OpenAI chat completion
-  if (!OpenAIClient) {
-    // If no key / client, return clear message so front-end shows it
-    return res.status(500).json({
-      reply:
-        "⚠️ Error calling OpenAI (server not configured). Set OPENAI_API_KEY in Render (or .env for local) and restart.",
-    });
-  }
-
-  // Build the prompt/messages
-  const memoryContext = getMemoryContext(6);
-  const systemPrompt = `You are "Jabber", a helpful assistant for the user. Be concise when possible.
-- Always be friendly.
-- If a clear factual answer is requested, answer directly.
-- If user asked to browse the web (mode web), use the web API instead.
-- When returning web-search results include an emoji 🔎 for the main text, and 🔗 for a source link.
-  
-Memory (latest):
-${memoryContext || "(no memories yet)"}
-`;
-
+  // Build messages: include short memory summary if any
+  const memoryText = memories.length ? `Memories: ${memories.slice(-5).join(" | ")}` : "";
   const messages = [
-    { role: "system", content: systemPrompt },
-    // Include a short "you are the user" hint if there are remembered items
-    ...(memoryContext ? [{ role: "system", content: `Recent memories:\n${memoryContext}` }] : []),
+    { role: "system", content: systemPrompt + (memoryText ? `\n\n${memoryText}` : "") },
     { role: "user", content: message },
   ];
 
+  // Attempt to call OpenAI chat completion; if fails, fallback to web search.
   try {
-    // Create chat completion
-    // NOTE: SDK versions vary. This is compatible with OpenAI official SDK v4+:
-    const completion = await OpenAIClient.chat.completions.create({
-      model: "gpt-3.5-turbo",
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not set");
+
+    // Use chat completions (new OpenAI JS API). Model choice can be adjusted.
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini", // change to a model you have access to if needed
       messages,
-      max_tokens: 600,
+      max_tokens: 400,
       temperature: 0.2,
     });
 
-    // Extract assistant reply - SDK returns different shapes sometimes
-    const reply = completion?.choices?.[0]?.message?.content || completion?.choices?.[0]?.text || null;
-    if (!reply) {
-      console.error("unexpected completion shape:", JSON.stringify(completion).slice(0, 1000));
-      return res.status(500).json({ reply: "⚠️ Error: no reply from OpenAI (unexpected response shape)." });
+    // The response text:
+    const reply =
+      completion?.choices?.[0]?.message?.content ??
+      completion?.choices?.[0]?.text ??
+      null;
+
+    if (reply) {
+      return res.json({ reply: String(reply).trim() });
     }
 
-    // Optionally remember the assistant reply as well? (we won't store assistant replies by default).
-    return res.json({ reply: reply.trim() });
+    // If for some reason no reply text present, fallthrough to fallback
+    throw new Error("No reply returned from OpenAI");
+  } catch (openaiErr) {
+    console.error("OpenAI chat error:", openaiErr?.message ?? openaiErr);
+
+    // Fallback: if user asked for a web lookup keyword, do DuckDuckGo search
+    try {
+      const searchResult = await duckDuckGoInstantAnswer(message);
+      if (searchResult && searchResult.text) {
+        return res.json({
+          reply: `🔎 ${searchResult.text}`,
+          fallback: true,
+        });
+      }
+    } catch (ddgErr) {
+      console.error("DuckDuckGo fallback error:", ddgErr);
+    }
+
+    // Final fallback response (matches UI text seen in screenshots)
+    return res.json({
+      reply:
+        "⚠️ Error calling OpenAI (check server logs and OPENAI_API_KEY).",
+      error: true,
+    });
+  }
+});
+
+// --- POST /api/image
+// Body: { prompt: "..." }
+// Returns: { url: "https://..." } or { error: "..." }
+app.post("/api/image", async (req, res) => {
+  const { prompt } = req.body || {};
+  if (!prompt || typeof prompt !== "string") {
+    return res.status(400).json({ error: "No prompt provided." });
+  }
+
+  try {
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not set");
+
+    // Image generation (OpenAI images)
+    const result = await openai.images.generate({
+      model: "gpt-image-1",
+      prompt,
+      size: "1024x1024",
+    });
+
+    // result.data[0].url in many SDK versions OR base64 in b64_json
+    const imageUrl = result?.data?.[0]?.url ?? result?.data?.[0]?.b64_json
+      ? `data:image/png;base64,${result.data[0].b64_json}`
+      : null;
+
+    if (!imageUrl) throw new Error("No image returned");
+
+    return res.json({ url: imageUrl });
   } catch (err) {
-    console.error("OpenAI chat error:", err);
-    // If it's an OpenAI key problem, surface a clear reply
-    const m = String(err?.message || err || "unknown error");
-    if (m.toLowerCase().includes("api key") || m.toLowerCase().includes("invalid")) {
-      return res.status(500).json({
-        reply: "⚠️ Error calling OpenAI (check server logs and OPENAI_API_KEY).",
-        detail: m,
-      });
-    }
-    return res.status(500).json({ reply: "⚠️ Error calling OpenAI (see server logs)", detail: m });
+    console.error("Image generation error:", err?.message ?? err);
+    return res.status(500).json({ error: "Could not generate image." });
   }
 });
 
-// Provide a friendly root message for quick debug
-app.get("/", (req, res) => {
-  // If you have an index.html in repo root, express.static will serve it. This is fallback.
-  res.sendFile(path.join(STATIC_DIR, "index.html"), (err) => {
-    if (err) {
-      res.send(
-        `<h3>Jabber server running</h3>
-         <p>OpenAI configured: ${!!(OpenAIClient && process.env.OPENAI_API_KEY)}</p>
-         <p>Endpoints: POST /chat, POST /generate-image, POST /remember, GET /memory</p>`
-      );
+// --- POST /api/search
+// Body: { query: "..." }  -> returns { results: ["text1", ...] }
+app.post("/api/search", async (req, res) => {
+  const { query } = req.body || {};
+  if (!query) return res.status(400).json({ results: [] });
+
+  try {
+    const ddg = await duckDuckGoInstantAnswer(query);
+    if (ddg && ddg.text) {
+      return res.json({ results: [ddg.text], source: ddg.source });
     }
-  });
+    return res.json({ results: [], source: "none" });
+  } catch (err) {
+    console.error("Search endpoint error:", err);
+    return res.status(500).json({ results: [] });
+  }
 });
 
-// Start server on Render-friendly port
-const PORT = Number(process.env.PORT || 10000);
+// --- POST /api/remember  (store a short memory string)
+app.post("/api/remember", (req, res) => {
+  const { text } = req.body || {};
+  if (!text || typeof text !== "string") {
+    return res.status(400).json({ ok: false, msg: "No text" });
+  }
+  memories.push(text.trim());
+  // cap memory size
+  if (memories.length > 200) memories.splice(0, memories.length - 200);
+  return res.json({ ok: true, memories });
+});
+
+// --- GET /api/memories
+app.get("/api/memories", (req, res) => {
+  return res.json({ memories });
+});
+
+// --- Health check
+app.get("/health", (req, res) => res.json({ status: "ok" }));
+
+// --- Catch-all serve index for SPA
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// --- Start server
 app.listen(PORT, () => {
-  console.log(`✅ Jabber server listening on port ${PORT}`);
-  if (!process.env.OPENAI_API_KEY) {
-    console.warn(
-      "⚠️ OPENAI_API_KEY is not set. AI features will not work until you set OPENAI_API_KEY in Render or .env."
-    );
-  }
+  console.log(`Server listening on port ${PORT}`);
 });
