@@ -1,23 +1,46 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Jabber</title>
+
+  <!-- Orbitron for header (cool purple) -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&display=swap" rel="stylesheet">
+
+  <!-- Main CSS -->
   <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+
 </head>
 <body>
-  <div class="app-container">
-    <header>
-      <h1>Jabber</h1>
-      <button id="themeToggle">🌗</button>
+  <div id="app">
+    <header class="app-header">
+      <div class="logo-wrap">
+        <img src="logo.png" alt="logo" class="logo" />
+        <h1 class="title">Jabber</h1>
+      </div>
+      <button id="theme-toggle" class="theme-toggle" title="Toggle theme">🌙</button>
     </header>
-    <main id="chat-container"></main>
-    <footer>
-      <input id="userInput" type="text" placeholder="Type your message...">
-      <button id="sendBtn">Send</button>
+
+    <main id="chat-container">
+      <div id="chat" class="chat"></div>
+    </main>
+
+    <footer class="chat-footer">
+      <input id="user-input" class="user-input" placeholder="Type your message..." />
+      <button id="send-btn" class="btn send">Send</button>
+
+      <div class="more-wrap">
+        <select id="action-select" class="action-select" title="More actions">
+          <option value="default">More...</option>
+          <option value="remember">Remember</option>
+          <option value="schedule">Schedule</option>
+          <option value="browse">Browse the Web</option>
+        </select>
+      </div>
     </footer>
   </div>
+
   <script src="script.js"></script>
 </body>
 </html>
