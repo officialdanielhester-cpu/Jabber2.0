@@ -1,8 +1,6 @@
-// index.js  — copy & paste this entire file into your project root
-// Requirements:
-// - package.json should include: "type": "module"
-// - .env must contain OPENAI_API_KEY (do NOT commit .env publicly)
-// - public/index.html (and other client files) must be in ./public/
+// index.js (place at repo root)
+// Requires: node >= 18 (fetch available), express, dotenv, cors
+// Make sure package.json has "type": "module" if using this import style.
 
 import express from "express";
 import path from "path";
@@ -17,22 +15,18 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json());
 
-// Serve static client files from /public
-const publicDir = path.join(__dirname, "public");
-app.use(express.static(publicDir));
+// Serve UI static files from /public (do not change UI files)
+app.use(express.static(path.join(__dirname, "public")));
 
-// In-memory memory store (simple). You can later replace with DB.
-let memory = [];
+// --- In-memory memory store (ephemeral) ---
+const memories = [];
 
-/**
- * Helper: call OpenAI ChatCompletion (HTTP)
- * Uses global fetch (Node 18+). Replace model as desired.
- */
-async function callOpenAIChat(messages = []) {
+// helper: call OpenAI Chat (ChatCompletions)
+async function callOpenAIChat(messages, model = "gpt-4o-mini") {
   if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY not set in environment.");
+    throw new Error("OPENAI_API_KEY not configured in environment");
   }
 
   const resp = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -42,187 +36,190 @@ async function callOpenAIChat(messages = []) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini", // adjust if you want another model
+      model,
       messages,
-      max_tokens: 800,
+      // keep max tokens reasonable for cost and speed
+      max_tokens: 600,
       temperature: 0.7,
     }),
   });
 
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => "");
-    throw new Error(`OpenAI chat request failed (${resp.status}): ${text}`);
-  }
-
   const data = await resp.json();
+  if (!resp.ok) {
+    const message = data?.error?.message || JSON.stringify(data);
+    const err = new Error("OpenAI chat error: " + message);
+    err.meta = data;
+    throw err;
+  }
   return data;
 }
 
-/**
- * Helper: quick DuckDuckGo Instant Answer lookup
- * Returns either AbstractText or list of RelatedTopics (first item)
- */
-async function duckDuckGoInstant(query) {
-  const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
-  const resp = await fetch(url);
-  if (!resp.ok) {
-    throw new Error(`DuckDuckGo request failed: ${resp.status}`);
+// helper: image generation (OpenAI Images endpoint)
+async function callOpenAIImage(prompt, size = "512x512") {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY not configured in environment");
   }
+
+  const resp = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-image-1",
+      prompt,
+      size,
+    }),
+  });
+
   const data = await resp.json();
-  // Prefer AbstractText
-  if (data.AbstractText && data.AbstractText.trim().length > 0) {
-    return {
-      source: "duckduckgo",
-      type: "abstract",
-      text: data.AbstractText,
-      url: data.AbstractURL || null,
-    };
+  if (!resp.ok) {
+    const message = data?.error?.message || JSON.stringify(data);
+    const err = new Error("OpenAI image error: " + message);
+    err.meta = data;
+    throw err;
   }
-  // Fallback to first RelatedTopic text
-  if (Array.isArray(data.RelatedTopics) && data.RelatedTopics.length > 0) {
-    const first = data.RelatedTopics[0];
-    const text = first.Text || (first.Topics && first.Topics[0] && first.Topics[0].Text) || "";
-    return {
-      source: "duckduckgo",
-      type: "related",
-      text: text || "No instant answer found.",
-      url: first.FirstURL || null,
-    };
-  }
-  return { source: "duckduckgo", type: "none", text: "No instant answer available." };
+  return data;
 }
 
-// Chat endpoint
-// Body: { message: "...", mode?: "ai" | "web" }
-// mode === "web" => use DuckDuckGo quick lookup and return result instead of calling OpenAI
+// --- Routes ---
+
+// POST /api/chat
+// body: { message: string, mode?: string }
+// returns: { reply: string }
 app.post("/api/chat", async (req, res) => {
   try {
-    const { message, mode } = req.body;
+    const { message } = req.body || {};
     if (!message || typeof message !== "string") {
-      return res.status(400).json({ error: "Missing 'message' in request body." });
+      return res.status(400).json({ reply: "⚠️ No message provided." });
     }
 
-    // Save user message to memory
-    memory.push({ role: "user", content: message });
+    // build messages for OpenAI: system + recent memory + user message
+    const system = {
+      role: "system",
+      content:
+        "You are Jabber — a friendly assistant. Be concise, helpful, and polite. If user asks to browse, say you will search and provide sources where possible.",
+    };
 
-    if (mode === "web") {
-      // Quick web lookup path
-      try {
-        const dd = await duckDuckGoInstant(message);
-        // store as assistant memory too
-        memory.push({ role: "assistant", content: dd.text });
-        return res.json({ reply: dd.text, source: "web" });
-      } catch (err) {
-        console.error("DuckDuckGo error:", err);
-        return res.status(500).json({ reply: "⚠️ Web lookup failed.", error: err.message });
+    // include small chunk of memory to help continuity (last 8)
+    const recentMemories = memories.slice(-8).map((m) => {
+      return { role: "system", content: `Memory: ${m.text}` };
+    });
+
+    const userMessage = { role: "user", content: message };
+
+    const messages = [system, ...recentMemories, userMessage];
+
+    const data = await callOpenAIChat(messages);
+
+    // pick assistant content
+    const reply = data?.choices?.[0]?.message?.content || "⚠️ Empty reply from OpenAI.";
+    // store in memory as a short conversation trace
+    memories.push({ text: `User: ${message}` });
+    memories.push({ text: `Assistant: ${reply}` });
+
+    res.json({ reply });
+  } catch (err) {
+    console.error("Error in /api/chat:", err?.message || err);
+    const msg =
+      err?.message && err.message.includes("OPENAI_API_KEY")
+        ? "⚠️ Server missing OPENAI_API_KEY. Add it to Render / environment variables."
+        : `⚠️ Error calling OpenAI (see server logs).`;
+    res.status(500).json({ reply: msg });
+  }
+});
+
+// POST /api/image
+// body: { prompt: string }
+// returns { imageUrl: string } (or error)
+app.post("/api/image", async (req, res) => {
+  try {
+    const { prompt } = req.body || {};
+    if (!prompt || typeof prompt !== "string") {
+      return res.status(400).json({ error: "No prompt provided." });
+    }
+
+    const data = await callOpenAIImage(prompt);
+
+    // OpenAI Image API returns data.data[0].url (older) or b64_json
+    const url = data?.data?.[0]?.url;
+    const b64 = data?.data?.[0]?.b64_json;
+    if (url) return res.json({ imageUrl: url });
+    if (b64) return res.json({ imageUrl: `data:image/png;base64,${b64}` });
+
+    return res.status(500).json({ error: "No image returned from OpenAI." });
+  } catch (err) {
+    console.error("Error in /api/image:", err?.message || err);
+    res.status(500).json({ error: "⚠️ Error generating image (check server logs)." });
+  }
+});
+
+// POST /api/search
+// body: { query: string }
+// returns { results: [string,...] }
+app.post("/api/search", async (req, res) => {
+  try {
+    const { query } = req.body || {};
+    if (!query || typeof query !== "string") {
+      return res.status(400).json({ results: [] });
+    }
+
+    // Use DuckDuckGo Instant Answer JSON as a free fallback
+    const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(
+      query
+    )}&format=json&no_html=1&skip_disambig=1`;
+    const r = await fetch(ddgUrl, { method: "GET" });
+    const data = await r.json();
+
+    // Prefer AbstractText, then RelatedTopics text
+    const results = [];
+    if (data?.AbstractText) results.push(`🔎 ${data.AbstractText}`);
+    if (Array.isArray(data?.RelatedTopics)) {
+      for (const topic of data.RelatedTopics.slice(0, 4)) {
+        if (topic.Text) results.push(`• ${topic.Text}`);
+        else if (topic.Topics && Array.isArray(topic.Topics)) {
+          topic.Topics.slice(0, 2).forEach((t) => t.Text && results.push(`• ${t.Text}`));
+        }
       }
     }
 
-    // Default: call OpenAI Chat
-    // Compose messages: system + memory (last ~12 messages)
-    const systemMsg = { role: "system", content: "You are Jabber, a helpful assistant." };
+    if (!results.length) results.push("🤔 No instant answer found. Try a different query.");
 
-    // Keep just last N messages to avoid token overload
-    const recentMemory = memory.slice(-12);
-    const messages = [systemMsg, ...recentMemory];
-
-    const aiResp = await callOpenAIChat(messages);
-
-    // Extract text
-    const reply = aiResp?.choices?.[0]?.message?.content ?? "⚠️ No reply from OpenAI.";
-
-    // Save assistant reply to memory
-    memory.push({ role: "assistant", content: reply });
-
-    return res.json({ reply, source: "openai" });
+    res.json({ results });
   } catch (err) {
-    console.error("Chat error:", err);
-    const message = err?.message || "Unknown server error.";
-    return res.status(500).json({ reply: `⚠️ Error: ${message}` });
+    console.error("Error in /api/search:", err);
+    res.status(500).json({ results: ["⚠️ Search failed (server error)."] });
   }
 });
 
-// Image generation
-// Body: { prompt: "..." }
-app.post("/api/image", async (req, res) => {
+// POST /api/remember  -> stores a memory
+// body: { text: string }
+app.post("/api/remember", (req, res) => {
   try {
-    const { prompt, size = "512x512" } = req.body;
-    if (!prompt || typeof prompt !== "string") {
-      return res.status(400).json({ error: "Missing 'prompt' in request body." });
-    }
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ error: "OPENAI_API_KEY is not configured on the server." });
-    }
-
-    const resp = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-image-1",
-        prompt,
-        size,
-      }),
-    });
-
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => "");
-      console.error("Image API error:", resp.status, text);
-      return res.status(resp.status).json({ error: `Image API failed (${resp.status}).` });
-    }
-
-    const data = await resp.json();
-    // Many OpenAI image responses use data[0].url or data[0].b64_json
-    const url = data?.data?.[0]?.url ?? null;
-    const b64 = data?.data?.[0]?.b64_json ?? null;
-
-    return res.json({ imageUrl: url, b64 });
+    const { text } = req.body || {};
+    if (!text || typeof text !== "string") return res.status(400).json({ ok: false, error: "no text" });
+    const entry = { text, createdAt: new Date().toISOString() };
+    memories.push(entry);
+    res.json({ ok: true });
   } catch (err) {
-    console.error("Image generation error:", err);
-    return res.status(500).json({ error: "Server error while generating image." });
+    console.error("remember error", err);
+    res.status(500).json({ ok: false, error: "server" });
   }
 });
 
-// Simple search endpoint (placeholder or can be expanded)
-app.post("/api/search", async (req, res) => {
-  try {
-    const { query } = req.body;
-    if (!query || typeof query !== "string") {
-      return res.status(400).json({ error: "Missing 'query' in request body." });
-    }
-    // Quick ddg fallback
-    const dd = await duckDuckGoInstant(query);
-    res.json({ results: [dd] });
-  } catch (err) {
-    console.error("Search error:", err);
-    res.status(500).json({ error: "Search failed." });
-  }
+// GET /api/memories -> { memories: [...] }
+app.get("/api/memories", (req, res) => {
+  res.json({ memories: memories.map((m) => (m.text ? m.text : JSON.stringify(m))).slice(-200) });
 });
 
-// Clear memory (for debugging) - optional
-app.post("/api/memory/clear", (req, res) => {
-  memory = [];
-  res.json({ ok: true });
-});
-
-// Health
-app.get("/health", (req, res) => res.json({ status: "ok", uptime: process.uptime() }));
-
-// Fallback: serve index.html for all other routes (SPA)
+// fallback: ensure index.html served for front-end routes (so client-side routing works)
 app.get("*", (req, res) => {
-  const indexPath = path.join(publicDir, "index.html");
-  return res.sendFile(indexPath, (err) => {
-    if (err) {
-      console.error("Failed to send index.html:", err);
-      res.status(500).send("Index not found on server. Make sure public/index.html exists.");
-    }
-  });
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Start server
+// Start
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Server listening on port ${PORT}`);
 });
