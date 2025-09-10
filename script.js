@@ -1,151 +1,81 @@
-/* Frontend behavior: chat, dropdown actions, dark toggle, image generation, web search, remember & schedule (localStorage) */
+// Adds a message to the chat window
+function addMessage(content, sender = "bot") {
+  const chatBox = document.getElementById("chat-box");
+  const message = document.createElement("div");
+  message.classList.add("message", sender);
 
-const chatEl = document.getElementById('chat');
-const inputEl = document.getElementById('message-input');
-const sendBtn = document.getElementById('send-btn');
-const selectAction = document.getElementById('action-select');
-const themeToggle = document.getElementById('theme-toggle');
-const root = document.documentElement;
-const STORAGE_KEY = 'jabber_memory_v1';
-const SCHEDULE_KEY = 'jabber_schedule_v1';
-
-/* startup theme */
-(function initTheme(){
-  const saved = localStorage.getItem('jabber_theme');
-  if (saved === 'light') {
-    document.documentElement.classList.add('light');
-    themeToggle.textContent = '☀️';
+  // If the bot sends HTML (like an <img>), insert safely
+  if (sender === "bot" && content.startsWith("<img")) {
+    message.innerHTML = content;
   } else {
-    document.documentElement.classList.remove('light');
-    themeToggle.textContent = '🌙';
+    message.textContent = content;
   }
-})();
 
-themeToggle.addEventListener('click', () => {
-  const isLight = document.documentElement.classList.toggle('light');
-  localStorage.setItem('jabber_theme', isLight ? 'light' : 'dark');
-  themeToggle.textContent = isLight ? '☀️' : '🌙';
-});
-
-/* helpers to create / add message bubbles */
-function createBubble(text, who = 'bot', html=false){
-  const wrapper = document.createElement('div');
-  wrapper.className = `msg ${who}`;
-  if (html) wrapper.innerHTML = text;
-  else wrapper.textContent = text;
-  return wrapper;
-}
-function addMessage(content, who='bot', html=false){
-  const bubble = createBubble(content, who, html);
-  chatEl.appendChild(bubble);
-  chatEl.scrollTo({top: chatEl.scrollHeight, behavior: 'smooth'});
+  chatBox.appendChild(message);
+  chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-/* Remember & schedule handling (localStorage) */
-function rememberItem(text) {
-  const store = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  store.push({text, created: new Date().toISOString()});
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-  addMessage('✅ Saved to memory.', 'bot');
-}
-function scheduleItem(text, datetime){
-  const store = JSON.parse(localStorage.getItem(SCHEDULE_KEY) || '[]');
-  store.push({text, when: datetime, created: new Date().toISOString()});
-  localStorage.setItem(SCHEDULE_KEY, JSON.stringify(store));
-  addMessage(`📅 Scheduled: ${text} @ ${datetime}`, 'bot');
-}
+// Send text message
+async function sendMessage(message) {
+  addMessage(message, "user");
 
-/* actions that call backend */
-async function callChat(message){
-  addMessage(message, 'user');
   try {
-    const res = await fetch('/api/chat', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message })
     });
-    const data = await res.json();
-    const reply = data?.reply || '⚠️ No response from Jabber.';
-    addMessage(reply, 'bot', true);
-  } catch (e) {
-    console.error(e);
-    addMessage('⚠️ Error connecting to server.', 'bot');
-  }
-}
 
-async function callImage(prompt){
-  addMessage(prompt, 'user');
-  try {
-    const res = await fetch('/api/image', {
-      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ prompt })
-    });
-    const data = await res.json();
-    if (data?.url) {
-      addMessage(`<div class="meta">🖼️ Generated image</div><img src="${data.url}" alt="generated">`, 'bot', true);
+    const data = await response.json();
+    if (data.error) {
+      addMessage("⚠️ " + data.error, "bot");
     } else {
-      addMessage('⚠️ Could not generate image.', 'bot');
+      addMessage(data.reply, "bot");
     }
-  } catch(err){ console.error(err); addMessage('⚠️ Image generation failed.', 'bot'); }
+  } catch (err) {
+    console.error(err);
+    addMessage("⚠️ Server error — check if backend is running.", "bot");
+  }
 }
 
-async function callSearch(query){
-  addMessage(query, 'user');
+// Generate image
+async function generateImage(prompt) {
+  addMessage("🎨 Generating image for: " + prompt, "user");
+
   try {
-    const res = await fetch('/api/search', {
-      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ query })
+    const response = await fetch("/api/image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt })
     });
-    const data = await res.json();
-    if (data?.answer) {
-      addMessage(`🔎 ${data.answer}`, 'bot', true);
-    } else if (data?.abstract) {
-      addMessage(`🔎 ${data.abstract}`, 'bot', true);
-    } else {
-      addMessage('🤔 I searched but could not find a clear Instant Answer.', 'bot');
+
+    const data = await response.json();
+    if (data.error) {
+      addMessage("⚠️ " + data.error, "bot");
+    } else if (data.imageUrl) {
+      addMessage(`<img src="${data.imageUrl}" alt="Generated image"/>`, "bot");
     }
-  } catch(e){ console.error(e); addMessage('⚠️ Web search failed.', 'bot'); }
+  } catch (err) {
+    console.error(err);
+    addMessage("⚠️ Could not reach image API.", "bot");
+  }
 }
 
-/* main handler depending on dropdown selection */
-async function handleSend(){
-  const text = inputEl.value.trim();
-  if (!text) return;
-  const action = selectAction.value;
-
-  if (action === 'remember'){
-    rememberItem(text);
-    inputEl.value = '';
-    return;
+// Hook up buttons
+document.getElementById("send-btn").addEventListener("click", () => {
+  const input = document.getElementById("user-input");
+  const message = input.value.trim();
+  if (message) {
+    sendMessage(message);
+    input.value = "";
   }
-  if (action === 'schedule'){
-    const when = prompt('Schedule date/time (e.g. 2025-09-10 12:30):');
-    if (when) scheduleItem(text, when);
-    inputEl.value = '';
-    return;
-  }
-  if (action === 'browse'){
-    await callSearch(text);
-    inputEl.value = '';
-    return;
-  }
-  if (action === 'image'){
-    await callImage(text);
-    inputEl.value = '';
-    return;
-  }
+});
 
-  // default send -> chat
-  await callChat(text);
-  inputEl.value = '';
-}
-
-/* UI events */
-sendBtn.addEventListener('click', handleSend);
-inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSend(); });
-
-/* On load show greeting / memory hint */
-(function showIntro(){
-  addMessage('Hello — I am Jabber. Ask me anything!', 'bot');
-  // show cached memory count
-  const mem = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  if (mem.length) addMessage(`💾 I have ${mem.length} saved memories (use "Remember" to add).`, 'bot');
-})();
+document.getElementById("generate-btn").addEventListener("click", () => {
+  const input = document.getElementById("user-input");
+  const prompt = input.value.trim();
+  if (prompt) {
+    generateImage(prompt);
+    input.value = "";
+  }
+});
