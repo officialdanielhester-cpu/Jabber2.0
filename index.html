@@ -13,21 +13,19 @@
       <span class="title">Jabber</span>
       <button id="theme-toggle">🌙 Dark Mode</button>
     </div>
+
     <div id="chat-box" class="chat-box"></div>
-    <div class="chat-input-area">
-      <input type="text" id="user-input" placeholder="Type your message...">
+
+    <div class="chat-input">
+      <input type="text" id="user-input" placeholder="Type your message..." />
       <button id="send-btn">Send</button>
-      <div class="dropdown">
-        <button class="dropbtn">More ▾</button>
-        <div class="dropdown-content">
-          <button class="action-btn" data-action="remember">🧠 Remember</button>
-          <button class="action-btn" data-action="send">📤 Send</button>
-          <button class="action-btn" data-action="schedule">⏰ Schedule</button>
-          <button class="action-btn" data-action="browse">🌐 Browse the Web</button>
-        </div>
-      </div>
+      <select id="mode-select">
+        <option value="ai">More...</option>
+        <option value="web">Browse the Web</option>
+      </select>
     </div>
   </div>
+
   <script src="script.js"></script>
 </body>
 </html>
