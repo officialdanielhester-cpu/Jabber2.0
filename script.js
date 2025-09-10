@@ -15,7 +15,7 @@ function addMessage(message, type) {
 // Mock bot response
 function botReply(userMessage) {
   setTimeout(() => {
-    addMessage("Jabber: I heard you say '" + userMessage + "'.", "bot-message");
+    addMessage("Jabber 🤖: I heard you say '" + userMessage + "'.", "bot-message");
   }, 800);
 }
 
@@ -51,26 +51,28 @@ document.querySelectorAll(".action-btn").forEach(btn => {
     if (action === "browse") {
       const query = userInput.value.trim();
       if (!query) {
-        addMessage("⚠️ Please type what you want to search first.", "bot-message");
+        addMessage("⚠️ Please type what you want me to look up first.", "bot-message");
         return;
       }
-      addMessage("🔎 Searching the web for: " + query, "bot-message");
 
-      // Use DuckDuckGo Instant Answer API
+      addMessage("🔎 Okay, let me check the web for: " + query, "bot-message");
+
+      // DuckDuckGo Instant Answer API
       fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`)
         .then(res => res.json())
         .then(data => {
           if (data.AbstractText) {
-            addMessage("🌐 " + data.AbstractText, "bot-message");
+            addMessage("🌐 Here’s what I found:", "bot-message");
+            addMessage("📖 " + data.AbstractText, "bot-message");
             if (data.AbstractURL) {
-              addMessage("🔗 " + data.AbstractURL, "bot-message");
+              addMessage("🔗 More info: " + data.AbstractURL, "bot-message");
             }
           } else {
-            addMessage("⚠️ No clear results found.", "bot-message");
+            addMessage("😕 I searched around, but I couldn’t find a clear answer.", "bot-message");
           }
         })
         .catch(() => {
-          addMessage("⚠️ Couldn’t reach the web, try again later.", "bot-message");
+          addMessage("⚠️ Oops, I couldn’t reach the web right now. Try again later.", "bot-message");
         });
 
     } else {
