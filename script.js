@@ -1,46 +1,46 @@
-document.getElementById("send-btn").addEventListener("click", sendMessage);
-document.getElementById("user-input").addEventListener("keypress", (e) => {
-  if (e.key === "Enter") sendMessage();
-});
+const chatContainer = document.getElementById("chat-container");
+const userInput = document.getElementById("userInput");
+const sendBtn = document.getElementById("sendBtn");
+const themeToggle = document.getElementById("themeToggle");
 
-async function sendMessage() {
-  const inputField = document.getElementById("user-input");
-  const chatBox = document.getElementById("chat-box");
-  const mode = document.getElementById("mode-select").value;
-  const userMessage = inputField.value.trim();
+// Add message to chat
+function addMessage(sender, text) {
+  const msg = document.createElement("div");
+  msg.className = sender;
+  msg.textContent = text;
+  chatContainer.appendChild(msg);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
 
-  if (!userMessage) return;
+  // AI talks back (speech synthesis)
+  if (sender === "ai") {
+    const utterance = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(utterance);
+  }
+}
 
-  // Show user message
-  addMessage(`You: ${userMessage}`, "user-message");
+// Send message
+sendBtn.addEventListener("click", async () => {
+  const text = userInput.value.trim();
+  if (!text) return;
 
-  // Send to server
+  addMessage("user", text);
+  userInput.value = "";
+
   try {
-    const response = await fetch("/chat", {
+    const res = await fetch("http://localhost:3000/api", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: userMessage, mode })
+      body: JSON.stringify({ message: text }),
     });
 
-    const data = await response.json();
-    addMessage(`Jabber 🤖: ${data.reply}`, "bot-message");
-  } catch (error) {
-    addMessage("⚠️ Error connecting to server.", "bot-message");
+    const data = await res.json();
+    addMessage("ai", data.reply);
+  } catch (err) {
+    addMessage("ai", "⚠️ Error connecting to server.");
   }
-
-  inputField.value = "";
-}
-
-function addMessage(text, className) {
-  const chatBox = document.getElementById("chat-box");
-  const msg = document.createElement("div");
-  msg.className = `message ${className}`;
-  msg.innerText = text;
-  chatBox.appendChild(msg);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
+});
 
 // Theme toggle
-document.getElementById("theme-toggle").addEventListener("click", () => {
-  document.body.classList.toggle("light-mode");
+themeToggle.addEventListener("click", () => {
+  document.body.classList.toggle("light-theme");
 });
