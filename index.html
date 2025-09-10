@@ -7,63 +7,30 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="app">
+  <div class="container">
     <header>
-      <h1>🗨️ Jabber</h1>
+      <h1>💬 Jabber</h1>
+      <button id="theme-toggle">🌙</button>
     </header>
 
-    <main id="chat-box"></main>
+    <main>
+      <div id="chat-box">
+        <div class="message bot">Hello — I am Jabber. Ask me anything!</div>
+      </div>
+    </main>
 
     <footer>
-      <input id="user-input" type="text" placeholder="Say something to Jabber..." />
-      <button id="send-btn">Send</button>
-      <button id="remember-btn">Remember</button>
-      <button id="schedule-btn">Schedule</button>
+      <input 
+        id="user-input" 
+        type="text" 
+        placeholder="Say something to Jabber..."
+      />
+      <button id="send">Send</button>
+      <button id="remember">Remember</button>
+      <button id="schedule">Schedule</button>
     </footer>
   </div>
 
-  <script>
-    const chatBox = document.getElementById("chat-box");
-    const userInput = document.getElementById("user-input");
-    const sendBtn = document.getElementById("send-btn");
-
-    function addMessage(content, sender) {
-      const msg = document.createElement("div");
-      msg.classList.add("message", sender);
-      msg.textContent = content;
-      chatBox.appendChild(msg);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    async function sendMessage() {
-      const message = userInput.value.trim();
-      if (!message) return;
-
-      addMessage(message, "user");
-      userInput.value = "";
-
-      try {
-        const res = await fetch("/api/chat", {   // ✅ updated here
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message })
-        });
-
-        const data = await res.json();
-        if (data.reply) {
-          addMessage(data.reply, "bot");
-        } else {
-          addMessage("⚠️ Error: No reply", "bot");
-        }
-      } catch (err) {
-        addMessage("❌ Connection error", "bot");
-      }
-    }
-
-    sendBtn.addEventListener("click", sendMessage);
-    userInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") sendMessage();
-    });
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
