@@ -1,65 +1,65 @@
 body {
-  font-family: 'Orbitron', sans-serif;
-  background-color: #121212;
   margin: 0;
-  height: 100vh;
+  font-family: Arial, sans-serif;
+  background-color: #111;
   display: flex;
   justify-content: center;
   align-items: center;
+  height: 100vh;
 }
 
 .chat-container {
-  width: 95%;
-  max-width: 500px;
-  height: 85vh;
-  background: #1e1e1e;
+  width: 400px;
+  max-width: 90%;
+  height: 600px;
+  background: #000;
   border: 2px solid #8000ff;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 0 20px rgba(128, 0, 255, 0.6);
 }
 
 .chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   background: #111;
   color: #8000ff;
   padding: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 2px solid #8000ff;
+  font-family: 'Orbitron', sans-serif;
+  border-bottom: 1px solid #8000ff;
 }
 
-.chat-header .logo {
-  margin-right: 8px;
+.title {
+  font-size: 20px;
+  margin-left: 5px;
 }
 
 #theme-toggle {
-  background: #8000ff;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  color: white;
+  background: transparent;
+  color: #8000ff;
+  border: 1px solid #8000ff;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 12px;
+  padding: 5px 10px;
 }
 
 .chat-box {
-  flex-grow: 1;
+  flex: 1;
   padding: 10px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  background: #1a1a1a;
 }
 
 .message {
-  max-width: 75%;
   padding: 10px;
   border-radius: 12px;
-  line-height: 1.4;
-  font-size: 14px;
+  max-width: 75%;
+  word-wrap: break-word;
 }
 
 .user-message {
@@ -71,95 +71,30 @@ body {
 .bot-message {
   align-self: flex-start;
   background: #333;
-  color: #ddd;
+  color: white;
 }
 
-.chat-input-area {
+.chat-input {
   display: flex;
   padding: 8px;
+  gap: 5px;
   background: #111;
-  border-top: 2px solid #8000ff;
-  gap: 6px;
+  border-top: 1px solid #8000ff;
 }
 
-#user-input {
+.chat-input input {
   flex: 1;
   padding: 8px;
-  border-radius: 6px;
+  border-radius: 8px;
   border: 1px solid #8000ff;
   outline: none;
 }
 
-#send-btn {
-  background: #8000ff;
-  border: none;
+.chat-input button, .chat-input select {
   padding: 8px 12px;
-  border-radius: 6px;
-  color: white;
-  cursor: pointer;
-}
-
-.dropdown {
-  position: relative;
-}
-
-.dropbtn {
-  background: #8000ff;
   border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  color: white;
-  cursor: pointer;
-}
-
-.dropdown-content {
-  display: none;
-  position: absolute;
-  bottom: 40px;
-  right: 0;
-  background-color: #1e1e1e;
-  border: 1px solid #8000ff;
-  border-radius: 6px;
-  min-width: 160px;
-  box-shadow: 0px 8px 16px rgba(0,0,0,0.4);
-  z-index: 1;
-  flex-direction: column;
-}
-
-.dropdown-content button {
-  background: none;
-  color: white;
-  padding: 10px;
-  border: none;
-  text-align: left;
-  cursor: pointer;
-  width: 100%;
-}
-
-.dropdown-content button:hover {
+  border-radius: 8px;
   background: #8000ff;
-}
-
-.dropdown:hover .dropdown-content {
-  display: flex;
-}
-
-/* Light Mode */
-body.light-mode {
-  background: #f4f4f4;
-}
-
-body.light-mode .chat-container {
-  background: #fff;
-  border-color: #8000ff;
-}
-
-body.light-mode .chat-header {
-  background: #eee;
-  color: #8000ff;
-}
-
-body.light-mode .bot-message {
-  background: #ddd;
-  color: #222;
+  color: white;
+  cursor: pointer;
 }
