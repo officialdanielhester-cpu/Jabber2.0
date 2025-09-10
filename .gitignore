@@ -1,15 +1,3 @@
-# Ignore environment files
-.env
-
-# Ignore node modules
 node_modules/
-
-# Ignore logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Ignore system files
+.env
 .DS_Store
-Thumbs.db
