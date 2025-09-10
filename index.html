@@ -12,18 +12,16 @@
       <span class="logo">💬 Jabber</span>
       <button id="theme-toggle">🌙 Dark Mode</button>
     </div>
+
     <div id="chat-messages"></div>
+
     <div class="chat-input">
-      <input type="text" id="message-input" placeholder="Type your message...">
+      <input type="text" id="user-input" placeholder="Type your message...">
       <button id="send-btn">Send</button>
-      <div class="dropdown">
-        <button class="dropbtn">More...</button>
-        <div class="dropdown-content">
-          <a href="#" id="remember-btn">Remember</a>
-          <a href="#" id="schedule-btn">Schedule</a>
-          <a href="#" id="browse-btn">Browse Web</a>
-        </div>
-      </div>
+      <select id="options-menu">
+        <option value="more">More...</option>
+        <option value="browse">Browse the Web</option>
+      </select>
     </div>
   </div>
 
