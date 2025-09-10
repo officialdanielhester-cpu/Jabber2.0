@@ -7,20 +7,63 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <img src="logo.png" alt="Jabber Logo" class="logo" />
-    <h1 class="app-title">Jabber</h1>
-  </header>
+  <div id="app">
+    <header>
+      <h1>🗨️ Jabber</h1>
+    </header>
 
-  <main>
-    <div class="chat-container" id="chatContainer"></div>
-  </main>
+    <main id="chat-box"></main>
 
-  <footer class="input-area">
-    <input type="text" id="userInput" placeholder="Message Jabber…" />
-    <button onclick="sendMessage()">Send</button>
-  </footer>
+    <footer>
+      <input id="user-input" type="text" placeholder="Say something to Jabber..." />
+      <button id="send-btn">Send</button>
+      <button id="remember-btn">Remember</button>
+      <button id="schedule-btn">Schedule</button>
+    </footer>
+  </div>
 
-  <script src="jabber.js"></script>
+  <script>
+    const chatBox = document.getElementById("chat-box");
+    const userInput = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+
+    function addMessage(content, sender) {
+      const msg = document.createElement("div");
+      msg.classList.add("message", sender);
+      msg.textContent = content;
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      addMessage(message, "user");
+      userInput.value = "";
+
+      try {
+        const res = await fetch("/api/chat", {   // ✅ updated here
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message })
+        });
+
+        const data = await res.json();
+        if (data.reply) {
+          addMessage(data.reply, "bot");
+        } else {
+          addMessage("⚠️ Error: No reply", "bot");
+        }
+      } catch (err) {
+        addMessage("❌ Connection error", "bot");
+      }
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    userInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+  </script>
 </body>
 </html>
