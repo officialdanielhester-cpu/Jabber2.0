@@ -1,50 +1,50 @@
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background: #1e1e1e;
-  color: white;
+  background: #111;
+  color: #fff;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
 }
 
+/* Chat box responsive */
 .chat-container {
   width: 95%;
-  max-width: 500px;
-  background: #111;
+  max-width: 600px;
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: #1a1a1a;
   border: 2px solid #8000ff;
-  border-radius: 12px;
-  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(128, 0, 255, 0.5);
 }
 
+/* Header */
 .chat-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-}
-
-.logo {
+  padding: 10px;
+  background: #222;
+  border-bottom: 2px solid #8000ff;
   font-family: 'Orbitron', sans-serif;
-  color: #8000ff;
-  margin: 0;
 }
 
 #theme-toggle {
   background: #8000ff;
   border: none;
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: 6px;
+  color: #fff;
   cursor: pointer;
-  color: white;
 }
 
-.chat-box {
-  height: 400px;
+/* Messages */
+#chat-messages {
+  flex: 1;
   overflow-y: auto;
-  background: #1c1c1c;
-  border-radius: 10px;
-  margin: 10px 0;
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -53,42 +53,79 @@ body {
 
 /* Chat bubbles */
 .message {
+  max-width: 70%;
   padding: 10px;
   border-radius: 10px;
-  max-width: 80%;
   word-wrap: break-word;
 }
 
 .user {
   background: #8000ff;
+  color: #fff;
   align-self: flex-end;
-  color: white;
 }
 
-.bot {
+.jabber {
   background: #333;
+  color: #fff;
   align-self: flex-start;
-  color: white;
 }
 
+/* Input area */
 .chat-input {
   display: flex;
-  gap: 6px;
+  padding: 10px;
+  border-top: 2px solid #8000ff;
+  background: #222;
 }
 
-#user-input {
+#message-input {
   flex: 1;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid #8000ff;
-  outline: none;
+  margin-right: 8px;
+  background: #111;
+  color: #fff;
 }
 
-#send-btn, #action-select {
+#send-btn, .dropbtn {
   background: #8000ff;
   border: none;
-  color: white;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: #fff;
   cursor: pointer;
+}
+
+/* Dropdown */
+.dropdown {
+  position: relative;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  bottom: 40px;
+  right: 0;
+  background: #222;
+  border: 1px solid #8000ff;
+  border-radius: 6px;
+  min-width: 120px;
+  z-index: 1;
+}
+
+.dropdown-content a {
+  display: block;
+  padding: 8px;
+  color: #fff;
+  text-decoration: none;
+}
+
+.dropdown-content a:hover {
+  background: #8000ff;
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
 }
