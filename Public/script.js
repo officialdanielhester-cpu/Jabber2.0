@@ -1,40 +1,59 @@
-const chatBox = document.getElementById("chat-box");
-const userInput = document.getElementById("user-input");
-const sendBtn = document.getElementById("send-btn");
-const moreBtn = document.getElementById("more-btn");
-const dropdown = moreBtn.parentElement;
+// sendMessage handles chat input -> server -> reply
+async function sendMessage(message) {
+  addMessage(message, "user");
 
-// Append a message bubble
-function appendMessage(text, sender) {
-  const div = document.createElement("div");
-  div.className = sender === "user" ? "user-msg" : "bot-msg";
-  div.textContent = text;
-  chatBox.appendChild(div);
-  chatBox.scrollTop = chatBox.scrollHeight;
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message }),
+    });
+
+    const data = await res.json();
+    addMessage(data.reply || "⚠️ No reply from server", "bot");
+  } catch (err) {
+    console.error("Chat error:", err);
+    addMessage("⚠️ Error contacting server", "bot");
+  }
 }
 
-// Send button click
-sendBtn.addEventListener("click", () => {
-  const text = userInput.value.trim();
-  if (!text) return;
-  appendMessage(text, "user");
-  userInput.value = "";
+// handle feature menu actions
+async function handleFeature(feature, input) {
+  if (feature === "remember") {
+    await fetch("/api/remember", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: input }),
+    });
+    addMessage("✅ Remembered: " + input, "bot");
+  }
 
-  // Placeholder response
-  setTimeout(() => {
-    appendMessage("⚠️ This is a placeholder bot reply.", "bot");
-  }, 600);
-});
+  if (feature === "schedule") {
+    addMessage(`📅 Scheduled: ${input}`, "bot");
+    // You can later hook this to a DB or calendar API
+  }
 
-// Dropdown toggle
-moreBtn.addEventListener("click", () => {
-  dropdown.classList.toggle("show");
-});
+  if (feature === "search") {
+    const res = await fetch("/api/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: input }),
+    });
+    const data = await res.json();
+    data.results.forEach(r => addMessage(r, "bot"));
+  }
 
-// Dropdown options
-document.querySelectorAll(".dropdown-content button").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    appendMessage(`Selected: ${btn.dataset.action}`, "user");
-    dropdown.classList.remove("show");
-  });
-});
+  if (feature === "image") {
+    const res = await fetch("/api/image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: input }),
+    });
+    const data = await res.json();
+    if (data.imageUrl) {
+      addMessage(`<img src="${data.imageUrl}" style="max-width:100%;border-radius:8px;">`, "bot", true);
+    } else {
+      addMessage("⚠️ No image generated", "bot");
+    }
+  }
+}
