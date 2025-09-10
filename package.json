@@ -1,16 +1,7 @@
 {
-  "name": "jabber",
-  "version": "1.0.0",
-  "description": "Jabber chat app",
-  "type": "module",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^16.0.3",
-    "express": "^4.18.2",
-    "node-fetch": "^3.4.1"
-  }
+  "name":"jabber",
+  "version":"1.0.0",
+  "main":"index.js",
+  "scripts":{"start":"node index.js"},
+  "dependencies":{"express":"^4.18.2","openai":"^4.4.0","dotenv":"^16.0.0","node-fetch":"^2.6.7"}
 }
