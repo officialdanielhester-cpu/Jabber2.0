@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 
 // Middleware
 app.use(express.json());
-app.use(express.static(__dirname)); // serves index.html, style.css, script.js
+app.use(express.static(__dirname));
 
 // OpenAI setup
 const openai = new OpenAI({
@@ -27,24 +27,18 @@ app.post("/chat", async (req, res) => {
   try {
     const { message } = req.body;
 
-    if (!message || message.trim() === "") {
-      return res.status(400).json({ error: "Message cannot be empty." });
-    }
-
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // lighter + faster model
+      model: "gpt-3.5-turbo", // or gpt-4 if enabled
       messages: [{ role: "user", content: message }],
     });
 
-    const reply = response.choices[0].message.content;
-    res.json({ reply });
+    res.json({ reply: response.choices[0].message.content });
   } catch (error) {
-    console.error("Error in /chat:", error);
-    res.status(500).json({ error: "Something went wrong with the AI." });
+    console.error("OpenAI Error:", error);
+    res.status(500).json({ reply: "⚠️ No response from Jabber." });
   }
 });
 
-// Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });
