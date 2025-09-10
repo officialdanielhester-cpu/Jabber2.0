@@ -1,40 +1,23 @@
-<!DOCTYPE html>
+<!-- public/index.html (minimal fallback) -->
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Jabber</title>
-
-  <!-- Google Fonts: Poppins -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <div class="chat-container">
-    <header class="chat-header">
-      <span class="chat-title">💬 Jabber</span>
-    </header>
-
-    <main id="chat-box" class="chat-box">
-      <div class="bot-msg">Hello — I am Jabber. Ask me anything!</div>
-    </main>
-
-    <div class="chat-input-area">
-      <input id="user-input" type="text" placeholder="Type your message..." />
-      <button id="send-btn">Send</button>
-      <div class="dropdown">
-        <button id="more-btn">More...</button>
-        <div class="dropdown-content">
-          <button data-action="remember">🧠 Remember</button>
-          <button data-action="schedule">⏰ Schedule</button>
-          <button data-action="search">🌐 Search Web</button>
-          <button data-action="image">🎨 Generate Image</button>
-        </div>
+  <main id="app-root">
+    <!-- your original UI pages should go here; this is a fallback -->
+    <div id="chat" style="max-width:900px;margin:24px auto;padding:8px;">
+      <!-- The actual UI file you had will load here normally -->
+      <div id="jabber-ui-placeholder" style="color:#fff;background:#111;padding:12px;border-radius:10px;">
+        If you see this, the server is running and serving static files. Replace public/index.html with your full UI to restore the original layout.
       </div>
     </div>
-  </div>
+  </main>
 
-  <script src="script.js"></script>
+  <script src="/script.js"></script>
 </body>
 </html>
