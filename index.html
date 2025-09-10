@@ -9,22 +9,25 @@
 <body>
   <div class="chat-container">
     <div class="chat-header">
-      <span class="logo">💬 Jabber</span>
+      <span class="logo">💬</span>
+      <span class="title">Jabber</span>
       <button id="theme-toggle">🌙 Dark Mode</button>
     </div>
-
-    <div id="chat-messages"></div>
-
-    <div class="chat-input">
+    <div id="chat-box" class="chat-box"></div>
+    <div class="chat-input-area">
       <input type="text" id="user-input" placeholder="Type your message...">
       <button id="send-btn">Send</button>
-      <select id="options-menu">
-        <option value="more">More...</option>
-        <option value="browse">Browse the Web</option>
-      </select>
+      <div class="dropdown">
+        <button class="dropbtn">More ▾</button>
+        <div class="dropdown-content">
+          <button class="action-btn" data-action="remember">🧠 Remember</button>
+          <button class="action-btn" data-action="send">📤 Send</button>
+          <button class="action-btn" data-action="schedule">⏰ Schedule</button>
+          <button class="action-btn" data-action="browse">🌐 Browse the Web</button>
+        </div>
+      </div>
     </div>
   </div>
-
   <script src="script.js"></script>
 </body>
 </html>
