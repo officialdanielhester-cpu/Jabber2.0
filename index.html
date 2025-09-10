@@ -5,39 +5,45 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Jabber</title>
 
-  <!-- Orbitron for header (cool purple) -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&display=swap" rel="stylesheet">
+  <!-- Theme font -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
 
-  <!-- Main CSS -->
-  <link rel="stylesheet" href="style.css">
-
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="app">
+  <div id="root">
     <header class="app-header">
-      <div class="logo-wrap">
-        <img src="logo.png" alt="logo" class="logo" />
-        <h1 class="title">Jabber</h1>
+      <div class="logo-area">
+        <img id="logo" src="logo.png" alt="Jabber logo" />
+        <h1 id="app-title">Jabber</h1>
       </div>
-      <button id="theme-toggle" class="theme-toggle" title="Toggle theme">🌙</button>
+
+      <div class="controls">
+        <button id="theme-toggle" title="Toggle dark/light">🌙</button>
+      </div>
     </header>
 
-    <main id="chat-container">
-      <div id="chat" class="chat"></div>
+    <main class="chat-wrap">
+      <section id="chat" class="chat-window" aria-live="polite"></section>
+
+      <div class="composer">
+        <input id="message-input" type="text" placeholder="Type your message..." autocomplete="off" />
+        <button id="send-btn" class="btn-primary">Send</button>
+
+        <div class="dropdown">
+          <select id="action-select" aria-label="More actions">
+            <option value="send">More...</option>
+            <option value="remember">Remember</option>
+            <option value="schedule">Schedule</option>
+            <option value="browse">Browse the Web</option>
+            <option value="image">Generate Image</option>
+          </select>
+        </div>
+      </div>
     </main>
 
-    <footer class="chat-footer">
-      <input id="user-input" class="user-input" placeholder="Type your message..." />
-      <button id="send-btn" class="btn send">Send</button>
-
-      <div class="more-wrap">
-        <select id="action-select" class="action-select" title="More actions">
-          <option value="default">More...</option>
-          <option value="remember">Remember</option>
-          <option value="schedule">Schedule</option>
-          <option value="browse">Browse the Web</option>
-        </select>
-      </div>
+    <footer class="app-footer">
+      <small>© Jabber — replace logo.png for your own</small>
     </footer>
   </div>
 
