@@ -1,108 +1,109 @@
-import express from "express";
-import fetch from "node-fetch";
-import dotenv from "dotenv";
-import cors from "cors";
-import path from "path";
-import { fileURLToPath } from "url";
-
-dotenv.config();
+// server.js
+const express = require('express');
+const path = require('path');
+const cors = require('cors');
+require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- Setup paths for serving frontend ---
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Serve static client files from /public
+const publicDir = path.join(__dirname, 'public');
+app.use(express.static(publicDir));
 
-// Serve static files from Public/
-app.use(express.static(path.join(__dirname, "Public")));
+// Simple in-memory server memory (non-persistent). Good for testing.
+let serverMemory = {
+  conversation: [],   // {role: 'user'|'assistant', content: '...'}
+  remembered: [],     // {text, createdAt}
+  schedule: [],       // {title, when, createdAt}
+};
 
-// --- Memory store ---
-let memory = [];
-
-// --- OpenAI Chat Endpoint ---
-app.post("/api/chat", async (req, res) => {
+// --- API: chat (simple fallback) ---
+// If you later add a working OpenAI key & code, replace inside this handler.
+app.post('/api/chat', async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message } = req.body || {};
+    if (!message) return res.status(400).json({ error: 'No message provided' });
 
-    memory.push({ role: "user", content: message });
+    // store user message
+    serverMemory.conversation.push({ role: 'user', content: message });
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "You are Jabber, a helpful assistant." },
-          ...memory
-        ]
-      })
-    });
+    // If you want to use OpenAI server-side, check for OPENAI_API_KEY here and forward the request.
+    // For now we return a friendly fallback reply so the UI stays interactive.
+    const fallbackReply = `I heard you say "${message}". (This is a local fallback reply from the server.)`;
 
-    const data = await response.json();
+    serverMemory.conversation.push({ role: 'assistant', content: fallbackReply });
 
-    if (data.error) {
-      return res.status(400).json({ reply: `⚠️ OpenAI Error: ${data.error.message}` });
-    }
-
-    const reply = data.choices[0].message.content;
-    memory.push({ role: "assistant", content: reply });
-
-    res.json({ reply });
+    return res.json({ reply: fallbackReply });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ reply: "⚠️ Server error while fetching reply." });
+    console.error('Chat error', err);
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
-// --- OpenAI Image Generation Endpoint ---
-app.post("/api/image", async (req, res) => {
+// --- API: image generation placeholder ---
+app.post('/api/image', async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt } = req.body || {};
+    if (!prompt) return res.status(400).json({ error: 'No prompt provided' });
 
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "gpt-image-1",
-        prompt,
-        size: "512x512"
-      })
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      return res.status(400).json({ error: data.error.message });
-    }
-
-    res.json({ imageUrl: data.data[0].url });
+    // If you add OpenAI key later you can make the image call here.
+    // For now return a harmless placeholder image so UI shows something.
+    const placeholder = 'https://via.placeholder.com/512x512.png?text=Image+Placeholder';
+    return res.json({ imageUrl: placeholder });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "⚠️ Server error while generating image." });
+    console.error('Image error', err);
+    return res.status(500).json({ error: 'Server error generating image' });
   }
 });
 
-// --- Web Search (Placeholder for now) ---
-app.post("/api/search", async (req, res) => {
-  const { query } = req.body;
-  res.json({ results: [`Pretend search result for: ${query}`] });
+// --- API: search placeholder ---
+app.post('/api/search', async (req, res) => {
+  const { query } = req.body || {};
+  if (!query) return res.status(400).json({ error: 'No query provided' });
+  // Return simple mock results so the client doesn't break
+  return res.json({
+    results: [
+      `Pretend search result for: ${query}`,
+      `Another result for: ${query}`
+    ]
+  });
 });
 
-// --- Default route: send frontend ---
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "Public", "index.html"));
+// --- API: remember & schedule (server-side fallback) ---
+app.post('/api/remember', (req, res) => {
+  const { text } = req.body || {};
+  if (!text) return res.status(400).json({ error: 'No text to remember' });
+  const item = { text, createdAt: new Date().toISOString() };
+  serverMemory.remembered.push(item);
+  return res.json({ ok: true, item });
 });
 
-// --- Start server ---
-const PORT = process.env.PORT || 5000;
+app.post('/api/schedule', (req, res) => {
+  const { when, title } = req.body || {};
+  if (!when || !title) return res.status(400).json({ error: 'Missing when or title' });
+  const item = { when, title, createdAt: new Date().toISOString() };
+  serverMemory.schedule.push(item);
+  return res.json({ ok: true, item });
+});
+
+// Fallback: if route not matched and file exists, static middleware above handles it.
+// For single-page apps, serve index.html for unknown GET routes:
+app.get('*', (req, res) => {
+  // if request accepts html, return index.html so client SPA can handle routing
+  if (req.accepts('html')) {
+    return res.sendFile(path.join(publicDir, 'index.html'), err => {
+      if (err) {
+        res.status(404).send('Index not found on server. Make sure public/index.html exists.');
+      }
+    });
+  } else {
+    res.status(404).send('Not Found');
+  }
+});
+
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log(`Server listening on port ${PORT}`);
 });
