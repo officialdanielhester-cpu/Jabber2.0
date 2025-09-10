@@ -7,27 +7,20 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="container">
+  <div id="app">
     <header>
       <h1>💬 Jabber</h1>
       <button id="theme-toggle">🌙</button>
     </header>
 
-    <main>
-      <div id="chat-box">
-        <div class="message bot">Hello — I am Jabber. Ask me anything!</div>
-      </div>
-    </main>
+    <main id="chat-box"></main>
 
     <footer>
-      <input 
-        id="user-input" 
-        type="text" 
-        placeholder="Say something to Jabber..."
-      />
-      <button id="send">Send</button>
-      <button id="remember">Remember</button>
-      <button id="schedule">Schedule</button>
+      <input id="user-input" type="text" placeholder="Say something to Jabber..." />
+      <button id="send-btn">Send</button>
+      <button id="remember-btn">Remember</button>
+      <button id="schedule-btn">Schedule</button>
+      <button id="browse-btn">Browse Web</button>
     </footer>
   </div>
 
