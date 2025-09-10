@@ -4,43 +4,168 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Jabber</title>
-  <link rel="stylesheet" href="style.css" />
-  <!-- font -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #000;
+      color: #fff;
+    }
+    header {
+      background: #111;
+      padding: 10px;
+      text-align: center;
+      font-size: 1.5em;
+      color: #b84cff;
+      border-bottom: 2px solid #b84cff;
+    }
+    #chat {
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      height: 80vh;
+      overflow-y: auto;
+    }
+    .msg {
+      max-width: 80%;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 10px;
+      line-height: 1.4em;
+    }
+    .bot {
+      background: #333;
+      align-self: flex-start;
+    }
+    .user {
+      background: #b84cff;
+      color: #fff;
+      align-self: flex-end;
+    }
+    #controls {
+      display: flex;
+      border-top: 2px solid #b84cff;
+      padding: 10px;
+      background: #111;
+    }
+    #input {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      outline: none;
+    }
+    button {
+      margin-left: 10px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      background: #b84cff;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      opacity: 0.8;
+    }
+    #menu {
+      margin-left: 10px;
+      background: #222;
+      color: #fff;
+      border: 1px solid #b84cff;
+      border-radius: 5px;
+      padding: 8px;
+    }
+  </style>
 </head>
 <body>
-  <div class="page-bg">
-    <div id="container">
-      <header>
-        <div class="logo">
-          <img src="logo.png.PNG" alt="logo" id="logo-image" onerror="this.style.display='none'">
-          <h1 id="app-title">Jabber</h1>
-        </div>
-        <div class="header-controls">
-          <button id="theme-toggle" title="Toggle theme">🌙</button>
-        </div>
-      </header>
-
-      <main id="chat-frame">
-        <div id="messages"></div>
-      </main>
-
-      <footer id="controls">
-        <input id="user-input" type="text" placeholder="Type your message..." />
-        <button id="send-btn" class="action">Send</button>
-
-        <div class="dropdown">
-          <select id="more-select" title="More actions">
-            <option value="more">More...</option>
-            <option value="browse">Browse the Web</option>
-            <option value="generate">Generate Image</option>
-            <option value="remember">Remember</option>
-          </select>
-        </div>
-      </footer>
-    </div>
+  <header>💬 Jabber</header>
+  <div id="chat">
+    <div class="msg bot">Hello — I am Jabber. Ask me anything!</div>
+  </div>
+  <div id="controls">
+    <input id="input" type="text" placeholder="Type your message..." />
+    <button onclick="sendMessage()">Send</button>
+    <select id="menu">
+      <option value="chat">Chat</option>
+      <option value="image">Image</option>
+      <option value="search">Search</option>
+      <option value="remember">Remember</option>
+      <option value="memories">Memories</option>
+    </select>
   </div>
 
-  <script src="script.js"></script>
+  <script>
+    const chatBox = document.getElementById("chat");
+    const input = document.getElementById("input");
+    const menu = document.getElementById("menu");
+
+    function addMessage(text, cls="bot") {
+      const div = document.createElement("div");
+      div.className = "msg " + cls;
+      div.innerHTML = text;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const text = input.value.trim();
+      if (!text) return;
+      addMessage(text, "user");
+      input.value = "";
+
+      const mode = menu.value;
+
+      try {
+        if (mode === "chat") {
+          const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: text })
+          });
+          const data = await res.json();
+          addMessage(data.reply || "⚠️ Error.", "bot");
+        } else if (mode === "image") {
+          const res = await fetch("/api/image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: text })
+          });
+          const data = await res.json();
+          if (data.url) {
+            addMessage(`<img src="${data.url}" width="256"/>`, "bot");
+          } else {
+            addMessage("⚠️ Image error.", "bot");
+          }
+        } else if (mode === "search") {
+          const res = await fetch("/api/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: text })
+          });
+          const data = await res.json();
+          addMessage(data.results[0] || "No results.", "bot");
+        } else if (mode === "remember") {
+          const res = await fetch("/api/remember", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text })
+          });
+          const data = await res.json();
+          addMessage(data.ok ? "✅ Remembered." : "❌ Failed.", "bot");
+        } else if (mode === "memories") {
+          const res = await fetch("/api/memories");
+          const data = await res.json();
+          addMessage("🧠 " + (data.memories.join(", ") || "No memories."), "bot");
+        }
+      } catch (err) {
+        addMessage("⚠️ Network error.", "bot");
+      }
+    }
+
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") sendMessage();
+    });
+  </script>
 </body>
 </html>
