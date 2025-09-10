@@ -1,45 +1,34 @@
-const chatBox = document.getElementById("chat-box");
-const userInput = document.getElementById("user-input");
+const chatMessages = document.getElementById("chat-messages");
+const messageInput = document.getElementById("message-input");
 const sendBtn = document.getElementById("send-btn");
-const actionSelect = document.getElementById("action-select");
 
+// Add a message bubble
 function addMessage(sender, text) {
-  const message = document.createElement("div");
-  message.classList.add("message", sender);
-  message.innerText = text;
-  chatBox.appendChild(message);
-  chatBox.scrollTop = chatBox.scrollHeight;
+  const msg = document.createElement("div");
+  msg.classList.add("message", sender === "You" ? "user" : "jabber");
+  msg.textContent = text;
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+// Send message
 sendBtn.addEventListener("click", async () => {
-  const text = userInput.value.trim();
-  if (!text) return;
+  const message = messageInput.value.trim();
+  if (!message) return;
 
-  addMessage("user", text);
-  userInput.value = "";
+  addMessage("You", message);
+  messageInput.value = "";
 
   try {
-    const res = await fetch("/chat", {
+    const response = await fetch("/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text }),
+      body: JSON.stringify({ message }),
     });
-    const data = await res.json();
-    addMessage("bot", data.reply ? data.reply : "⚠️ No response from Jabber.");
-  } catch (err) {
-    addMessage("bot", "⚠️ Error contacting server.");
-  }
-});
 
-// Dropdown actions
-actionSelect.addEventListener("change", () => {
-  const choice = actionSelect.value;
-  if (choice === "browse") {
-    window.open("https://www.google.com", "_blank");
-  } else if (choice === "schedule") {
-    alert("📅 Scheduling feature coming soon!");
-  } else if (choice === "remember") {
-    alert("🧠 Remember feature coming soon!");
+    const data = await response.json();
+    addMessage("Jabber", data.reply || "⚠️ No response from Jabber.");
+  } catch (err) {
+    addMessage("Jabber", "⚠️ Connection error.");
   }
-  actionSelect.value = "default"; // reset
 });
