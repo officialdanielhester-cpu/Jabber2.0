@@ -1,25 +1,51 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Jabber 2.0</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Jabber</title>
+
+  <!-- Fonts to match your screenshots -->
+  <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Quicksand:wght@300;400;600&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="app-container">
-    <header>
-      <h1>Jabber 2.0</h1>
+  <div id="shell">
+    <header class="topbar">
+      <div class="logo">
+        <span class="logo-icon">💬</span>
+        <span class="logo-text">Jabber</span>
+      </div>
+      <button id="themeToggle" class="round-toggle" aria-label="Toggle theme">🌙</button>
     </header>
 
-    <main>
-      <div class="chat-box" id="chatBox"></div>
-      <div class="input-area">
-        <input type="text" id="userInput" placeholder="Type your message..." />
-        <button id="sendBtn">Send</button>
+    <main id="chatWrap">
+      <div id="chatFrame">
+        <div id="messages" aria-live="polite"></div>
       </div>
     </main>
+
+    <div class="controls">
+      <input id="input" type="text" placeholder="Type your message..." autocomplete="off" />
+      <button id="send" class="btn primary">Send</button>
+
+      <div class="dropdown">
+        <button id="moreBtn" class="btn outline">More...</button>
+        <div id="moreMenu" class="dropdown-menu hidden" role="menu">
+          <button class="menu-item" data-action="remember">🧠 Remember <span id="rememberState" class="small-muted"></span></button>
+          <button class="menu-item" data-action="schedule">⏰ Schedule</button>
+          <button class="menu-item" data-action="search">🌐 Search Web</button>
+          <button class="menu-item" data-action="image">🎨 Generate Image</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="foot">
+      <div class="site-url">jabber2-0.onrender.com</div>
+    </footer>
   </div>
-  <script src="script.js"></script>
+
+  <script src="script.js" defer></script>
 </body>
 </html>
