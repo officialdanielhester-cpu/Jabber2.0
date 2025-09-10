@@ -1,31 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>Jabber</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div id="app">
-    <header>
-      <h1>💬 Jabber</h1>
-      <button id="theme-toggle">🌙</button>
-    </header>
+  <header>
+    <span>💬 <span style="color:#9b59b6; font-family:'Orbitron', sans-serif;">Jabber</span></span>
+    <button id="theme-toggle">☀️</button>
+  </header>
 
-    <!-- Chat history -->
-    <main id="chat-box">
-      <div class="message bot">Hello — I am Jabber. Ask me anything!</div>
-    </main>
+  <div id="chat-box">
+    <div class="bot message">Hello — I am Jabber. Ask me anything!</div>
+  </div>
 
-    <!-- Input + Buttons -->
-    <footer>
-      <input id="user-input" type="text" placeholder="Say something to Jabber..." />
-      <button id="send-btn">Send</button>
-      <button id="remember-btn">Remember</button>
-      <button id="schedule-btn">Schedule</button>
-      <button id="browse-btn">Browse Web</button>
-    </footer>
+  <div id="input-area">
+    <input type="text" id="user-input" placeholder="Say something to Jabber...">
+    <button id="send-btn">Send</button>
+    <button id="remember-btn">Remember</button>
+    <button id="schedule-btn">Schedule</button>
+    <button id="browse-btn">Browse Web</button>
   </div>
 
   <script src="script.js"></script>
