@@ -27,145 +27,72 @@
       overflow-y: auto;
     }
     .msg {
-      max-width: 80%;
-      padding: 10px;
       margin: 5px 0;
-      border-radius: 10px;
-      line-height: 1.4em;
+      padding: 8px 12px;
+      border-radius: 5px;
+      max-width: 70%;
+    }
+    .user {
+      background: #b84cff;
+      align-self: flex-end;
     }
     .bot {
       background: #333;
       align-self: flex-start;
     }
-    .user {
-      background: #b84cff;
-      color: #fff;
-      align-self: flex-end;
-    }
-    #controls {
-      display: flex;
-      border-top: 2px solid #b84cff;
-      padding: 10px;
-      background: #111;
-    }
     #input {
+      display: flex;
+      padding: 10px;
+      border-top: 1px solid #444;
+    }
+    #input input {
       flex: 1;
       padding: 10px;
       border: none;
-      border-radius: 5px;
-      outline: none;
+      border-radius: 4px;
+      margin-right: 10px;
     }
-    button {
-      margin-left: 10px;
+    #input button {
       padding: 10px 15px;
       border: none;
-      border-radius: 5px;
       background: #b84cff;
-      color: #fff;
-      font-weight: bold;
+      color: white;
+      border-radius: 4px;
       cursor: pointer;
-    }
-    button:hover {
-      opacity: 0.8;
-    }
-    #menu {
-      margin-left: 10px;
-      background: #222;
-      color: #fff;
-      border: 1px solid #b84cff;
-      border-radius: 5px;
-      padding: 8px;
     }
   </style>
 </head>
 <body>
-  <header>💬 Jabber</header>
-  <div id="chat">
-    <div class="msg bot">Hello — I am Jabber. Ask me anything!</div>
-  </div>
-  <div id="controls">
-    <input id="input" type="text" placeholder="Type your message..." />
+  <header>Jabber</header>
+  <div id="chat"></div>
+  <div id="input">
+    <input type="text" id="msgInput" placeholder="Type your message...">
     <button onclick="sendMessage()">Send</button>
-    <select id="menu">
-      <option value="chat">Chat</option>
-      <option value="image">Image</option>
-      <option value="search">Search</option>
-      <option value="remember">Remember</option>
-      <option value="memories">Memories</option>
-    </select>
   </div>
 
   <script>
-    const chatBox = document.getElementById("chat");
-    const input = document.getElementById("input");
-    const menu = document.getElementById("menu");
-
-    function addMessage(text, cls="bot") {
-      const div = document.createElement("div");
-      div.className = "msg " + cls;
-      div.innerHTML = text;
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
     async function sendMessage() {
+      const input = document.getElementById("msgInput");
       const text = input.value.trim();
       if (!text) return;
-      addMessage(text, "user");
+
+      const chat = document.getElementById("chat");
+      chat.innerHTML += `<div class="msg user">${text}</div>`;
       input.value = "";
 
-      const mode = menu.value;
-
       try {
-        if (mode === "chat") {
-          const res = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: text })
-          });
-          const data = await res.json();
-          addMessage(data.reply || "⚠️ Error.", "bot");
-        } else if (mode === "image") {
-          const res = await fetch("/api/image", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt: text })
-          });
-          const data = await res.json();
-          if (data.url) {
-            addMessage(`<img src="${data.url}" width="256"/>`, "bot");
-          } else {
-            addMessage("⚠️ Image error.", "bot");
-          }
-        } else if (mode === "search") {
-          const res = await fetch("/api/search", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query: text })
-          });
-          const data = await res.json();
-          addMessage(data.results[0] || "No results.", "bot");
-        } else if (mode === "remember") {
-          const res = await fetch("/api/remember", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text })
-          });
-          const data = await res.json();
-          addMessage(data.ok ? "✅ Remembered." : "❌ Failed.", "bot");
-        } else if (mode === "memories") {
-          const res = await fetch("/api/memories");
-          const data = await res.json();
-          addMessage("🧠 " + (data.memories.join(", ") || "No memories."), "bot");
-        }
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text }),
+        });
+        const data = await res.json();
+        chat.innerHTML += `<div class="msg bot">${data.reply}</div>`;
+        chat.scrollTop = chat.scrollHeight;
       } catch (err) {
-        addMessage("⚠️ Network error.", "bot");
+        chat.innerHTML += `<div class="msg bot">⚠️ Error: ${err.message}</div>`;
       }
     }
-
-    input.addEventListener("keydown", e => {
-      if (e.key === "Enter") sendMessage();
-    });
   </script>
 </body>
 </html>
