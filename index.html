@@ -7,25 +7,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="chat-container">
-    <div class="chat-header">
-      <span class="logo">💬</span>
-      <span class="title">Jabber</span>
-      <button id="theme-toggle">🌙 Dark Mode</button>
-    </div>
-
-    <div id="chat-box" class="chat-box"></div>
-
-    <div class="chat-input">
-      <input type="text" id="user-input" placeholder="Type your message..." />
-      <button id="send-btn">Send</button>
-      <select id="mode-select">
-        <option value="ai">More...</option>
-        <option value="web">Browse the Web</option>
-      </select>
-    </div>
+  <div class="app-container">
+    <header>
+      <h1>Jabber</h1>
+      <button id="themeToggle">🌗</button>
+    </header>
+    <main id="chat-container"></main>
+    <footer>
+      <input id="userInput" type="text" placeholder="Type your message...">
+      <button id="sendBtn">Send</button>
+    </footer>
   </div>
-
   <script src="script.js"></script>
 </body>
 </html>
